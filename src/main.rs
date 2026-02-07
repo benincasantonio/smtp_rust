@@ -6,6 +6,17 @@ struct Client {
     port: u16
 }
 
+enum SmtpCommand {
+    HELO(String),
+    MAIL_FROM(String),
+    RCPT_TO(String),
+    DATA,
+    QUIT,
+    UNKNOWN(String)
+}
+
+
+
 fn listen_client() -> std::io::Result<TcpListener> {
     let client = Client {
         ip: String::from("127.0.0.1"),
@@ -32,7 +43,8 @@ fn handle_client(mut stream: TcpStream) -> std::io::Result<()> {
     stream.write_all(b"220 Service ready\r\n")?;
 
     let mut reader = BufReader::new(&stream);
-
+    
+    let mut writer = stream.try_clone()?;
     let mut line = String::new();
 
     loop {
@@ -42,26 +54,27 @@ fn handle_client(mut stream: TcpStream) -> std::io::Result<()> {
 
         
         if bytes_read == 0 {
-            stream.write_all(b"Connection terminated");
-
             println!("Client disconnected: {}", stream.peer_addr()?);
             break;
         }
 
-        let command = line.trim_end();
+        let command = line.trim_end().to_uppercase();
 
-        if line.is_empty() {
+        if command.is_empty() {
             continue;
         }
+
+        let proceed = handle_command(command, &mut writer); 
         
-        println!("Received command: {}", command);
     }
 
     Ok(())
 }
 
-
-
+fn handle_command(command: String, stream: &mut TcpStream) -> std::io::Result<bool> {
+    println!("Handling command: {}", command);
+    Ok(true)
+}
 
 fn main() -> std::io::Result<()> {
     println!("Hello, world!");
